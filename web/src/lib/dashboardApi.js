@@ -1,48 +1,28 @@
-import { supabase } from './supabaseClient'
+import { api } from './apiClient'
 
 // ---------------------------------------------------------------------
 // نمای روزانه: همه داده‌های مربوط به یک روز خاص را جمع می‌کند
 // ---------------------------------------------------------------------
 export async function fetchDailyReportDetail(reportDateShamsi) {
-  const { data: report } = await supabase
-    .from('daily_reports')
-    .select('*')
-    .eq('report_date_shamsi', reportDateShamsi)
-    .maybeSingle()
+  const data = await api.get(`/daily-reports/by-date/${encodeURIComponent(reportDateShamsi)}`)
+  if (!data) return null
 
-  if (!report) return null
-
-  if (!report.is_mine_active) {
-    return { report, isMineActive: false }
+  if (!data.isMineActive) {
+    return data
   }
 
-  const reportId = report.id
-
-  const [shifts, extraction, sales, operations, personnel, machinery, issues, delays, breakdowns] =
-    await Promise.all([
-      supabase.from('production_shifts').select('*').eq('daily_report_id', reportId).order('shift_number'),
-      supabase.from('extraction_records').select('*').eq('daily_report_id', reportId).maybeSingle(),
-      supabase.from('sales_records').select('*').eq('daily_report_id', reportId),
-      supabase.from('daily_operations').select('*').eq('daily_report_id', reportId),
-      supabase.from('daily_personnel').select('*').eq('daily_report_id', reportId),
-      supabase.from('daily_machinery').select('*').eq('daily_report_id', reportId),
-      supabase.from('daily_issues').select('*').eq('daily_report_id', reportId).maybeSingle(),
-      supabase.from('run_delays').select('*').eq('daily_report_id', reportId),
-      supabase.from('daily_breakdown_reports').select('*').eq('daily_report_id', reportId),
-    ])
-
   return {
-    report,
+    report: data.report,
     isMineActive: true,
-    shifts: shifts.data || [],
-    extraction: extraction.data,
-    sales: (sales.data || []).filter((s) => s.has_sales),
-    operations: (operations.data || []).filter((o) => o.has_operations),
-    personnel: personnel.data || [],
-    machinery: machinery.data || [],
-    issues: issues.data,
-    delays: (delays.data || []).filter((d) => d.has_delay),
-    breakdowns: (breakdowns.data || []).filter((b) => b.has_breakdown),
+    shifts: data.shifts || [],
+    extraction: data.extraction,
+    sales: (data.sales || []).filter((s) => s.has_sales),
+    operations: (data.operations || []).filter((o) => o.has_operations),
+    personnel: data.personnel || [],
+    machinery: data.machinery || [],
+    issues: data.issues,
+    delays: (data.delays || []).filter((d) => d.has_delay),
+    breakdowns: (data.breakdowns || []).filter((b) => b.has_breakdown),
   }
 }
 
@@ -51,32 +31,13 @@ export async function fetchDailyReportDetail(reportDateShamsi) {
 // و برای نمودارها تجمیع می‌کند.
 // ---------------------------------------------------------------------
 export async function fetchMonthlyReports(startIsoDate, endIsoDate) {
-  const { data: reports } = await supabase
-    .from('daily_reports')
-    .select('*')
-    .gte('report_date', startIsoDate)
-    .lte('report_date', endIsoDate)
-    .order('report_date')
-
-  if (!reports || reports.length === 0) {
-    return { reports: [], shifts: [], sales: [], machinery: [], personnel: [] }
-  }
-
-  const reportIds = reports.map((r) => r.id)
-
-  const [shifts, sales, machinery, personnel] = await Promise.all([
-    supabase.from('production_shifts').select('*').in('daily_report_id', reportIds),
-    supabase.from('sales_records').select('*').in('daily_report_id', reportIds).eq('has_sales', true),
-    supabase.from('daily_machinery').select('*').in('daily_report_id', reportIds),
-    supabase.from('daily_personnel').select('*').in('daily_report_id', reportIds),
-  ])
-
+  const data = await api.get(`/daily-reports/range?start=${startIsoDate}&end=${endIsoDate}`)
   return {
-    reports,
-    shifts: shifts.data || [],
-    sales: sales.data || [],
-    machinery: machinery.data || [],
-    personnel: personnel.data || [],
+    reports: data.reports || [],
+    shifts: data.shifts || [],
+    sales: data.sales || [],
+    machinery: data.machinery || [],
+    personnel: data.personnel || [],
   }
 }
 

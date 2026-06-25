@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabaseClient'
-import { useAuth } from '../lib/AuthContext'
+import { api } from '../lib/apiClient'
 import { todayShamsiString } from '../lib/jalaliDate'
 import InspectionItemRow from '../components/maintenance/InspectionItemRow'
 
 export default function InspectionFormPage() {
   const { frequency, equipmentId } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
 
   const [equipment, setEquipment] = useState(null)
   const [items, setItems] = useState([])
@@ -23,19 +21,12 @@ export default function InspectionFormPage() {
 
   async function loadData() {
     setLoading(true)
-    const { data: eq } = await supabase.from('equipment').select('*').eq('id', equipmentId).single()
-    const { data: checklistItems } = await supabase
-      .from('inspection_checklist_items')
-      .select('*')
-      .eq('equipment_id', equipmentId)
-      .eq('is_active', true)
-      .order('item_order')
-
-    setEquipment(eq)
-    setItems(checklistItems || [])
+    const data = await api.get(`/maintenance/equipment/${equipmentId}`)
+    setEquipment(data.equipment)
+    setItems(data.items)
 
     const initialValues = {}
-    ;(checklistItems || []).forEach((item) => {
+    data.items.forEach((item) => {
       initialValues[item.id] = { status: null, numericValue: '', note: '', photoUrl: null }
     })
     setValues(initialValues)
@@ -56,30 +47,20 @@ export default function InspectionFormPage() {
 
     setSaving(true)
     try {
-      const { data: record, error: recordError } = await supabase
-        .from('inspection_records')
-        .insert({
-          equipment_id: equipmentId,
-          inspected_by: user?.id,
-          inspection_date: new Date().toISOString().slice(0, 10),
-          inspection_date_shamsi: todayShamsiString(),
-          is_complete: true,
-        })
-        .select()
-        .single()
-
-      if (recordError) throw recordError
-
-      const resultsPayload = items.map((item) => ({
-        inspection_record_id: record.id,
-        checklist_item_id: item.id,
+      const results = items.map((item) => ({
+        checklistItemId: item.id,
         status: values[item.id].status,
-        numeric_value: values[item.id].numericValue || null,
+        numericValue: values[item.id].numericValue || null,
         note: values[item.id].note || null,
-        photo_url: values[item.id].photoUrl || null,
+        photoUrl: values[item.id].photoUrl || null,
       }))
 
-      await supabase.from('inspection_results').insert(resultsPayload)
+      await api.post('/maintenance/inspections', {
+        equipmentId,
+        dateIso: new Date().toISOString().slice(0, 10),
+        dateShamsi: todayShamsiString(),
+        results,
+      })
 
       setMessage('بازرسی با موفقیت ثبت شد')
       setTimeout(() => navigate(`/maintenance/inspection/${frequency}`), 1000)

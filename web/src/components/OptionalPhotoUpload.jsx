@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
+import { uploadPhoto } from '../lib/apiClient'
 
 // فیلد آپلود عکس اختیاری
-// عکس در یک سطل ذخیره‌سازی Supabase به نام «report-photos» نگهداری می‌شود
-// و فقط آدرس آن (photo_url) در پایگاه داده ذخیره می‌شود.
+// عکس مستقیماً روی همان سرور (پوشه uploads) ذخیره می‌شود.
 
 export default function OptionalPhotoUpload({ value, onChange }) {
   const [uploading, setUploading] = useState(false)
@@ -17,21 +16,8 @@ export default function OptionalPhotoUpload({ value, onChange }) {
     setError('')
 
     try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
-      const filePath = `${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('report-photos')
-        .upload(filePath, file)
-
-      if (uploadError) throw uploadError
-
-      const { data: publicUrlData } = supabase.storage
-        .from('report-photos')
-        .getPublicUrl(filePath)
-
-      onChange(publicUrlData.publicUrl)
+      const url = await uploadPhoto(file)
+      onChange(url)
     } catch (err) {
       setError('بارگذاری عکس ناموفق بود. می‌توانید بدون عکس ادامه دهید.')
       console.error(err)

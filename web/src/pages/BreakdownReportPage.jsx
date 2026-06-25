@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabaseClient'
-import { useAuth } from '../lib/AuthContext'
+import { api } from '../lib/apiClient'
 import OptionalPhotoUpload from '../components/OptionalPhotoUpload'
 
 export default function BreakdownReportPage() {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const [equipmentList, setEquipmentList] = useState([])
   const [form, setForm] = useState({
     equipmentId: '',
@@ -19,12 +17,11 @@ export default function BreakdownReportPage() {
   const [message, setMessage] = useState('')
 
   useEffect(() => {
-    supabase
-      .from('equipment')
-      .select('id, name')
-      .eq('is_active', true)
-      .order('name')
-      .then(({ data }) => setEquipmentList(data || []))
+    api.get('/maintenance/equipment?frequency=daily').then((daily) => {
+      api.get('/maintenance/equipment?frequency=weekly').then((weekly) => {
+        setEquipmentList([...daily, ...weekly].sort((a, b) => a.name.localeCompare(b.name)))
+      })
+    })
   }, [])
 
   function update(field, value) {
@@ -39,18 +36,7 @@ export default function BreakdownReportPage() {
 
     setSaving(true)
     try {
-      await supabase.from('breakdown_records').insert({
-        equipment_id: form.equipmentId,
-        reported_by: user?.id,
-        breakdown_type: 'اتفاقی',
-        failure_datetime: new Date().toISOString(),
-        cause: form.cause,
-        corrective_action: form.correctiveAction || null,
-        spare_parts_used: form.sparePartsUsed || null,
-        photo_url: form.photoUrl,
-        status: 'باز',
-      })
-
+      await api.post('/maintenance/breakdown', form)
       setMessage('خرابی با موفقیت ثبت شد')
       setTimeout(() => navigate('/maintenance'), 1000)
     } catch (err) {

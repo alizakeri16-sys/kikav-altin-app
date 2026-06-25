@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../lib/AuthContext'
-import { supabase } from '../lib/supabaseClient'
 import { todayShamsiString } from '../lib/jalaliDate'
 import { INACTIVITY_REASONS, WEATHER_CONDITIONS, createEmptyDailyReport } from '../lib/dailyReportConstants'
 import ProductionShiftsSection from '../components/sections/ProductionShiftsSection'

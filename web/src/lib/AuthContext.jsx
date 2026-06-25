@@ -1,10 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { supabase } from './supabaseClient'
-
-// توضیح برای آینده: چون کاربران (اپراتور/سرپرست/مدیر) با یوزرنیم ساده (نه ایمیل) وارد می‌شوند،
-// از سیستم احراز هویت پیش‌فرض Supabase استفاده نمی‌کنیم، بلکه خودمان جدول users را چک می‌کنیم
-// و رمز عبور را با bcrypt (در یک تابع سمت سرور / Edge Function) مقایسه می‌کنیم.
-// این فایل رابط ساده‌ای برای React فراهم می‌کند.
+import { api } from './apiClient'
 
 const AuthContext = createContext(null)
 
@@ -15,24 +10,15 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const stored = sessionStorage.getItem('kikav_user')
     if (stored) {
-      setUser(JSON.parse(stored))
+      setUser(JSON.parse(stored).user)
     }
     setLoading(false)
   }, [])
 
   async function login(username, password) {
-    // فراخوانی یک تابع لبه (Edge Function) که رمز را به‌صورت امن مقایسه می‌کند
-    // و در صورت درست بودن، اطلاعات کاربر (بدون هش رمز) را برمی‌گرداند.
-    const { data, error } = await supabase.functions.invoke('login', {
-      body: { username, password },
-    })
-
-    if (error || !data?.user) {
-      throw new Error('نام کاربری یا رمز عبور اشتباه است')
-    }
-
+    const data = await api.post('/auth/login', { username, password })
     setUser(data.user)
-    sessionStorage.setItem('kikav_user', JSON.stringify(data.user))
+    sessionStorage.setItem('kikav_user', JSON.stringify({ user: data.user, token: data.token }))
     return data.user
   }
 
@@ -51,3 +37,4 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext)
 }
+

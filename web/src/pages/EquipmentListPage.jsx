@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabaseClient'
+import { api } from '../lib/apiClient'
 import { todayShamsiString } from '../lib/jalaliDate'
 
 export default function EquipmentListPage() {
   const { frequency } = useParams() // 'daily' | 'weekly'
   const navigate = useNavigate()
   const [equipmentList, setEquipmentList] = useState([])
-  const [inspectedSet, setInspectedSet] = useState(new Set())
+  const [inspectedMap, setInspectedMap] = useState({})
   const [loading, setLoading] = useState(true)
 
-  const frequencyDays = frequency === 'daily' ? 1 : 7
   const title = frequency === 'daily' ? 'بازرسی روزانه' : 'بازرسی هفتگی'
 
   useEffect(() => {
@@ -19,33 +18,17 @@ export default function EquipmentListPage() {
 
   async function loadData() {
     setLoading(true)
-    const { data: equipment } = await supabase
-      .from('equipment')
-      .select('id, code, name')
-      .eq('inspection_frequency_days', frequencyDays)
-      .eq('is_active', true)
-      .order('code')
-
+    const equipment = await api.get(`/maintenance/equipment?frequency=${frequency}`)
     const today = todayShamsiString()
-    // برای بازرسی روزانه فقط بررسی می‌کنیم امروز انجام شده یا نه
-    // برای بازرسی هفتگی، بررسی می‌کنیم در ۷ روز گذشته انجام شده یا نه (با مقایسه تاریخ میلادی)
-    let query = supabase
-      .from('inspection_records')
-      .select('equipment_id, inspection_date')
-      .eq('is_complete', true)
+    const statusRows = await api.get(`/maintenance/inspections/status?dateShamsi=${encodeURIComponent(today)}&frequency=${frequency}`)
 
-    if (frequency === 'daily') {
-      query = query.eq('inspection_date_shamsi', today)
-    } else {
-      const sevenDaysAgo = new Date()
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-      query = query.gte('inspection_date', sevenDaysAgo.toISOString().slice(0, 10))
-    }
+    const map = {}
+    statusRows.forEach((row) => {
+      map[row.equipment_id] = row.full_name
+    })
 
-    const { data: inspections } = await query
-
-    setEquipmentList(equipment || [])
-    setInspectedSet(new Set((inspections || []).map((r) => r.equipment_id)))
+    setEquipmentList(equipment)
+    setInspectedMap(map)
     setLoading(false)
   }
 
@@ -62,21 +45,16 @@ export default function EquipmentListPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {equipmentList.map((eq) => {
-          const isDone = inspectedSet.has(eq.id)
+          const isDone = !!inspectedMap[eq.id]
           return (
             <button
               key={eq.id}
               className="card"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                width: '100%',
-              }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
               onClick={() => navigate(`/maintenance/inspection/${frequency}/${eq.id}`)}
             >
               <span className={`badge ${isDone ? 'badge-success' : 'badge-neutral'}`}>
-                {isDone ? 'انجام شد' : 'بازرسی نشده'}
+                {isDone ? `انجام شد${inspectedMap[eq.id] ? ' — ' + inspectedMap[eq.id] : ''}` : 'بازرسی نشده'}
               </span>
               <span style={{ fontWeight: 500 }}>{eq.name}</span>
             </button>

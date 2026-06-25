@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { supabase } from '../lib/supabaseClient'
+import { api } from '../lib/apiClient'
 
 export default function InspectionGuidePage() {
   const { itemId } = useParams()
@@ -12,15 +12,10 @@ export default function InspectionGuidePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase
-      .from('inspection_checklist_items')
-      .select('*')
-      .eq('id', itemId)
-      .single()
-      .then(({ data }) => {
-        setItem(data)
-        setLoading(false)
-      })
+    api.get(`/maintenance/checklist-item/${itemId}`).then((data) => {
+      setItem(data)
+      setLoading(false)
+    })
   }, [itemId])
 
   if (loading) return <p style={{ textAlign: 'center', padding: 40 }}>در حال بارگذاری...</p>
