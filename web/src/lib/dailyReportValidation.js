@@ -8,6 +8,12 @@ function isEmpty(value) {
 export function validateDailyReport(report) {
   const errors = {}
 
+  // اگر معدن امروز تعطیل بوده، فقط دلیل تعطیلی لازم است - بقیه بخش‌ها اصلاً اعتبارسنجی نمی‌شوند
+  if (report.isMineActive === false) {
+    errors.inactivity = isEmpty(report.inactivityReason) ? [true] : []
+    return errors
+  }
+
   // بخش تولید: همه فیلدهای هر دو شیفت باید پر باشند
   errors.production = report.shifts.map((shift) => {
     const fieldErrors = {}
