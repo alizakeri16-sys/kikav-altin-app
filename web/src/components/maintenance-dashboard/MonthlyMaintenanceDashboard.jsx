@@ -11,6 +11,11 @@ import {
 import { toFarsiDigits, todayShamsiString, shamsiStringToIsoDate } from '../../lib/jalaliDate'
 import SummaryCard from '../dashboard/SummaryCard'
 
+const MONTH_NAMES = [
+  'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+  'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند',
+]
+
 function currentShamsiYearMonth() {
   const today = todayShamsiString()
   const normalized = today.replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
@@ -54,13 +59,21 @@ export default function MonthlyMaintenanceDashboard() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="card">
         <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ flex: 1 }}>
-            <span className="label">سال شمسی</span>
-            <input value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} />
+          <div style={{ flex: 1.4 }}>
+            <span className="label">ماه</span>
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+              {MONTH_NAMES.map((name, i) => (
+                <option key={i} value={String(i + 1).padStart(2, '0')}>{name}</option>
+              ))}
+            </select>
           </div>
           <div style={{ flex: 1 }}>
-            <span className="label">ماه (۰۱ تا ۱۲)</span>
-            <input value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} />
+            <span className="label">سال شمسی</span>
+            <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+              {[1403, 1404, 1405, 1406, 1407].map((y) => (
+                <option key={y} value={String(y)}>{toFarsiDigits(y)}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>

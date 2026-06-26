@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { fetchDailyMaintenanceStatus } from '../../lib/maintenanceDashboardApi'
 import { toFarsiDigits } from '../../lib/jalaliDate'
 import SummaryCard from '../dashboard/SummaryCard'
+import ShamsiDatePicker from '../ShamsiDatePicker'
 
 export default function DailyMaintenanceDashboard({ selectedDate, onChangeDate }) {
   const [data, setData] = useState(null)
@@ -30,8 +31,7 @@ export default function DailyMaintenanceDashboard({ selectedDate, onChangeDate }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="card">
-        <span className="label">انتخاب تاریخ (شمسی)</span>
-        <input value={selectedDate} onChange={(e) => onChangeDate(e.target.value)} />
+        <ShamsiDatePicker label="انتخاب تاریخ" value={selectedDate} onChange={onChangeDate} />
       </div>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
