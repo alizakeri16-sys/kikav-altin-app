@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../lib/apiClient'
-import { todayShamsiString } from '../lib/jalaliDate'
+import { todayShamsiString, shamsiStringToIsoDate } from '../lib/jalaliDate'
 import InspectionItemRow from '../components/maintenance/InspectionItemRow'
+import ShamsiDatePicker from '../components/ShamsiDatePicker'
+import ConfirmSubmitDialog from '../components/ConfirmSubmitDialog'
 
 export default function InspectionFormPage() {
   const { frequency, equipmentId } = useParams()
@@ -11,9 +13,11 @@ export default function InspectionFormPage() {
   const [equipment, setEquipment] = useState(null)
   const [items, setItems] = useState([])
   const [values, setValues] = useState({})
+  const [inspectionDateShamsi, setInspectionDateShamsi] = useState(todayShamsiString())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [showConfirm, setShowConfirm] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -39,12 +43,16 @@ export default function InspectionFormPage() {
 
   const completedCount = Object.values(values).filter((v) => v.status).length
 
-  async function handleSubmit() {
+  function handleSubmit() {
     if (completedCount < items.length) {
       setMessage(`${items.length - completedCount} مورد هنوز بررسی نشده است`)
       return
     }
+    setShowConfirm(true)
+  }
 
+  async function confirmAndSubmit() {
+    setShowConfirm(false)
     setSaving(true)
     try {
       const results = items.map((item) => ({
@@ -57,8 +65,8 @@ export default function InspectionFormPage() {
 
       await api.post('/maintenance/inspections', {
         equipmentId,
-        dateIso: new Date().toISOString().slice(0, 10),
-        dateShamsi: todayShamsiString(),
+        dateIso: shamsiStringToIsoDate(inspectionDateShamsi),
+        dateShamsi: inspectionDateShamsi,
         results,
       })
 
@@ -66,7 +74,7 @@ export default function InspectionFormPage() {
       setTimeout(() => navigate(`/maintenance/inspection/${frequency}`), 1000)
     } catch (err) {
       console.error(err)
-      setMessage('ثبت بازرسی با خطا مواجه شد')
+      setMessage(err.message || 'ثبت بازرسی با خطا مواجه شد')
     } finally {
       setSaving(false)
     }
@@ -78,6 +86,16 @@ export default function InspectionFormPage() {
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
+      <div style={{ marginBottom: 10 }}>
+        <button className="btn-secondary" onClick={() => navigate(`/maintenance/inspection/${frequency}`)}>
+          ← بازگشت
+        </button>
+      </div>
+
+      <div className="card" style={{ marginBottom: 12 }}>
+        <ShamsiDatePicker label="تاریخ بازرسی" value={inspectionDateShamsi} onChange={setInspectionDateShamsi} />
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <span className="badge badge-neutral">{completedCount} / {items.length}</span>
         <p style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>{equipment?.name}</p>
@@ -110,6 +128,13 @@ export default function InspectionFormPage() {
         {saving ? 'در حال ثبت...' : 'ثبت بازرسی'}
       </button>
       {message && <p style={{ textAlign: 'center', marginTop: 10 }}>{message}</p>}
+
+      <ConfirmSubmitDialog
+        open={showConfirm}
+        onConfirm={confirmAndSubmit}
+        onCancel={() => setShowConfirm(false)}
+        message="آیا از ثبت نهایی این بازرسی مطمئن هستید؟ پس از ثبت، امکان ویرایش توسط شما وجود نخواهد داشت."
+      />
     </div>
   )
 }

@@ -13,6 +13,15 @@ router.post('/', async (req, res) => {
   try {
     await client.query('BEGIN')
 
+    // اگر کاربر اپراتور است، اجازه ثبت دوباره برای یک تاریخ که از قبل گزارش دارد را نمی‌دهیم
+    if (req.userRole === 'operator') {
+      const existing = await client.query('select id from daily_reports where report_date = $1', [report.reportDateIso])
+      if (existing.rows.length > 0) {
+        await client.query('ROLLBACK')
+        return res.status(409).json({ error: 'برای این تاریخ قبلاً گزارش ثبت شده است. در صورت نیاز به ویرایش، با سرپرست یا مدیر هماهنگ کنید.' })
+      }
+    }
+
     const reportResult = await client.query(
       `insert into daily_reports
         (report_date, report_date_shamsi, submitted_by, is_mine_active, inactivity_reason, inactivity_note, weather_condition, temperature, is_complete)
@@ -126,6 +135,17 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: 'ثبت گزارش با خطا مواجه شد' })
   } finally {
     client.release()
+  }
+})
+
+// بررسی اینکه آیا برای این تاریخ از قبل گزارشی ثبت شده (برای پیشگیری از خطای تکراری و راهنمایی کاربر)
+router.get('/exists/:isoDate', async (req, res) => {
+  try {
+    const result = await pool.query('select id from daily_reports where report_date = $1', [req.params.isoDate])
+    res.json({ exists: result.rows.length > 0 })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'خطا در بررسی گزارش' })
   }
 })
 

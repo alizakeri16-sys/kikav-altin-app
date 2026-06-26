@@ -12,8 +12,10 @@ import IssuesSection from '../components/sections/IssuesSection'
 import DelaysSection from '../components/sections/DelaysSection'
 import BreakdownSection from '../components/sections/BreakdownSection'
 import SectionAccordionItem from '../components/SectionAccordionItem'
+import ShamsiDatePicker from '../components/ShamsiDatePicker'
+import ConfirmSubmitDialog from '../components/ConfirmSubmitDialog'
 import { validateDailyReport, hasAnyValidationError } from '../lib/dailyReportValidation'
-import { saveDailyReport } from '../lib/dailyReportApi'
+import { saveDailyReport, checkReportExists } from '../lib/dailyReportApi'
 
 const SECTION_KEYS = [
   'production',
@@ -31,6 +33,7 @@ export default function DailyReportFormPage() {
   const [errors, setErrors] = useState({})
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
+  const [showConfirm, setShowConfirm] = useState(false)
 
   useEffect(() => {
     setReport((r) => ({ ...r, reportDateShamsi: todayShamsiString() }))
@@ -56,6 +59,25 @@ export default function DailyReportFormPage() {
       return
     }
 
+    // اپراتورها فقط می‌توانند گزارش جدید ثبت کنند، نه گزارش از قبل ثبت‌شده را دوباره/ویرایش بفرستند
+    if (user?.role === 'operator') {
+      try {
+        const exists = await checkReportExists(report.reportDateShamsi)
+        if (exists) {
+          setSaveMessage('برای این تاریخ قبلاً گزارش ثبت شده است. در صورت نیاز به ویرایش، با سرپرست یا مدیر هماهنگ کنید.')
+          return
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
+    // قبل از ثبت نهایی، یک تأیید صریح از کاربر می‌گیریم
+    setShowConfirm(true)
+  }
+
+  async function confirmAndSubmit() {
+    setShowConfirm(false)
     setSaving(true)
     setSaveMessage('')
     try {
@@ -65,7 +87,7 @@ export default function DailyReportFormPage() {
       setErrors({})
     } catch (err) {
       console.error(err)
-      setSaveMessage('ثبت گزارش با خطا مواجه شد. دوباره تلاش کنید.')
+      setSaveMessage(err.message || 'ثبت گزارش با خطا مواجه شد. دوباره تلاش کنید.')
     } finally {
       setSaving(false)
     }
@@ -105,6 +127,13 @@ export default function DailyReportFormPage() {
           {saving ? 'در حال ثبت...' : 'ثبت گزارش روز تعطیل'}
         </button>
         {saveMessage && <p style={{ textAlign: 'center', marginTop: 10 }}>{saveMessage}</p>}
+
+        <ConfirmSubmitDialog
+          open={showConfirm}
+          onConfirm={confirmAndSubmit}
+          onCancel={() => setShowConfirm(false)}
+          message="آیا از ثبت گزارش تعطیلی امروز مطمئن هستید؟ پس از ثبت، امکان ویرایش توسط شما وجود نخواهد داشت."
+        />
       </div>
     )
   }
@@ -224,6 +253,13 @@ export default function DailyReportFormPage() {
         {saving ? 'در حال ثبت...' : 'ثبت نهایی گزارش روز'}
       </button>
       {saveMessage && <p style={{ textAlign: 'center', marginTop: 10 }}>{saveMessage}</p>}
+
+      <ConfirmSubmitDialog
+        open={showConfirm}
+        onConfirm={confirmAndSubmit}
+        onCancel={() => setShowConfirm(false)}
+        message="آیا از ثبت نهایی گزارش امروز مطمئن هستید؟ پس از ثبت، امکان ویرایش توسط شما وجود نخواهد داشت."
+      />
     </div>
   )
 }
@@ -240,12 +276,10 @@ function HeaderBlock({ report, updateField }) {
       </div>
 
       <div style={{ marginBottom: 12 }}>
-        <span className="label label-required">تاریخ گزارش</span>
-        <input
-          type="text"
+        <ShamsiDatePicker
+          label="تاریخ گزارش"
           value={report.reportDateShamsi}
-          onChange={(e) => updateField('reportDateShamsi', e.target.value)}
-          placeholder="۱۴۰۵/۰۴/۰۲"
+          onChange={(v) => updateField('reportDateShamsi', v)}
         />
       </div>
 

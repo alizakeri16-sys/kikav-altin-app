@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { fetchDailyReportDetail } from '../../lib/dashboardApi'
 import SummaryCard from './SummaryCard'
+import ShamsiDatePicker from '../ShamsiDatePicker'
 import { toFarsiDigits } from '../../lib/jalaliDate'
 
 export default function DailyDashboardView({ selectedDate, onChangeDate }) {
@@ -26,8 +27,7 @@ export default function DailyDashboardView({ selectedDate, onChangeDate }) {
   return (
     <div>
       <div className="card" style={{ marginBottom: 16 }}>
-        <span className="label">انتخاب تاریخ (شمسی، مثل ۱۴۰۵/۰۴/۰۲)</span>
-        <input value={selectedDate} onChange={(e) => onChangeDate(e.target.value)} />
+        <ShamsiDatePicker label="انتخاب تاریخ" value={selectedDate} onChange={onChangeDate} />
       </div>
 
       {loading && <p style={{ textAlign: 'center' }}>در حال بارگذاری...</p>}
@@ -98,10 +98,14 @@ function DailyDetailContent({ detail }) {
       {detail.sales.length > 0 && (
         <div className="card">
           <p className="section-title">فروش امروز</p>
+          <p style={{ fontSize: 14, fontWeight: 600, margin: '0 0 10px', color: 'var(--color-primary)' }}>
+            جمع کل امروز: {toFarsiDigits(detail.sales.reduce((s, r) => s + (Number(r.daily_exit_tonnage) || 0), 0))} تن
+          </p>
           {detail.sales.map((s) => (
-            <p key={s.id} style={{ fontSize: 13, margin: '4px 0' }}>
-              {s.material_type} به {s.buyer_name} — {toFarsiDigits(s.daily_exit_tonnage)} تن
-            </p>
+            <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '4px 0', borderBottom: '1px solid var(--color-border)' }}>
+              <span>{toFarsiDigits(s.daily_exit_tonnage)} تن</span>
+              <span>{s.material_type} — {s.buyer_name}</span>
+            </div>
           ))}
         </div>
       )}

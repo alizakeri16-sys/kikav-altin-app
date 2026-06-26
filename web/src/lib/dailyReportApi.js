@@ -7,3 +7,10 @@ export async function saveDailyReport(report, user) {
   const payload = { ...report, reportDateIso: isoDate }
   return api.post('/daily-reports', payload)
 }
+
+// بررسی اینکه آیا برای این تاریخ شمسی از قبل گزارشی ثبت شده است
+export async function checkReportExists(reportDateShamsi) {
+  const isoDate = shamsiStringToIsoDate(reportDateShamsi)
+  const result = await api.get(`/daily-reports/exists/${isoDate}`)
+  return result.exists
+}

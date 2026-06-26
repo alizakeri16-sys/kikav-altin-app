@@ -73,6 +73,19 @@ router.post('/inspections', async (req, res) => {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
+
+    // اگر کاربر اپراتور است، اجازه ثبت دوباره بازرسی برای همان تجهیز و همان روز را نمی‌دهیم
+    if (req.userRole === 'operator') {
+      const existing = await client.query(
+        'select id from inspection_records where equipment_id = $1 and inspection_date_shamsi = $2 and is_complete = true',
+        [equipmentId, dateShamsi]
+      )
+      if (existing.rows.length > 0) {
+        await client.query('ROLLBACK')
+        return res.status(409).json({ error: 'برای این تجهیز در این تاریخ قبلاً بازرسی ثبت شده است. در صورت نیاز به ویرایش، با سرپرست یا مدیر هماهنگ کنید.' })
+      }
+    }
+
     const recordResult = await client.query(
       `insert into inspection_records (equipment_id, inspected_by, inspection_date, inspection_date_shamsi, is_complete)
        values ($1, $2, $3, $4, true) returning id`,

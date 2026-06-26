@@ -25,6 +25,11 @@ const INACTIVITY_COLORS = {
   'کمبود برق': '#7a4fa3',
 }
 
+const MONTH_NAMES = [
+  'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+  'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند',
+]
+
 function currentShamsiYearMonth() {
   const today = todayShamsiString() // مثل ۱۴۰۵/۰۴/۰۲
   const normalized = today.replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
@@ -75,19 +80,27 @@ export default function MonthlyDashboardView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="card">
         <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ flex: 1 }}>
-            <span className="label">سال شمسی</span>
-            <input value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} />
+          <div style={{ flex: 1.4 }}>
+            <span className="label">ماه</span>
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+              {MONTH_NAMES.map((name, i) => (
+                <option key={i} value={String(i + 1).padStart(2, '0')}>{name}</option>
+              ))}
+            </select>
           </div>
           <div style={{ flex: 1 }}>
-            <span className="label">ماه (۰۱ تا ۱۲)</span>
-            <input value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} />
+            <span className="label">سال شمسی</span>
+            <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+              {[1403, 1404, 1405, 1406, 1407].map((y) => (
+                <option key={y} value={String(y)}>{toFarsiDigits(y)}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <SummaryCard label="جمع تناژ تولید" value={toFarsiDigits(summary.totalTonnage)} unit="تن" />
+        <SummaryCard label="جمع تناژ ورودی" value={toFarsiDigits(summary.totalTonnage)} unit="تن" />
         <SummaryCard label="میانگین روزانه" value={toFarsiDigits(summary.avgTonnage)} unit="تن" />
         <SummaryCard label="روزهای فعال" value={toFarsiDigits(summary.activeDaysCount)} unit="روز" />
         <SummaryCard
@@ -99,7 +112,7 @@ export default function MonthlyDashboardView() {
       </div>
 
       <div className="card">
-        <p className="section-title">روند تناژ تولید در طول ماه</p>
+        <p className="section-title">روند تناژ ورودی در طول ماه</p>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -136,7 +149,10 @@ export default function MonthlyDashboardView() {
 
       {salesByBuyer.length > 0 && (
         <div className="card">
-          <p className="section-title">فروش به تفکیک خریدار (تن)</p>
+          <p className="section-title">فروش ماسه به تفکیک خریدار</p>
+          <p style={{ fontSize: 14, fontWeight: 600, margin: '0 0 10px', color: 'var(--color-primary)' }}>
+            جمع کل فروش این ماه: {toFarsiDigits(salesByBuyer.reduce((s, r) => s + r.tonnage, 0))} تن
+          </p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={salesByBuyer}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -146,6 +162,23 @@ export default function MonthlyDashboardView() {
               <Bar dataKey="tonnage" fill="#2d6ea3" />
             </BarChart>
           </ResponsiveContainer>
+
+          <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse', marginTop: 14 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <th style={{ textAlign: 'right', padding: 6 }}>نام خریدار</th>
+                <th style={{ textAlign: 'right', padding: 6 }}>جمع تناژ (تن)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {salesByBuyer.map((s) => (
+                <tr key={s.buyer} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <td style={{ padding: 6 }}>{s.buyer}</td>
+                  <td style={{ padding: 6 }}>{toFarsiDigits(s.tonnage)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
