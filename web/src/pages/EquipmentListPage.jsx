@@ -38,6 +38,11 @@ export default function EquipmentListPage() {
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', padding: 16 }}>
+      <div style={{ marginBottom: 10 }}>
+        <button className="btn-secondary" onClick={() => navigate('/maintenance')}>
+          ← بازگشت
+        </button>
+      </div>
       <div style={{ textAlign: 'center', marginBottom: 16 }}>
         <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', margin: 0 }}>شرکت کی‌کاو آلتین</p>
         <p style={{ fontSize: 18, fontWeight: 600, margin: '4px 0 0' }}>{title}</p>

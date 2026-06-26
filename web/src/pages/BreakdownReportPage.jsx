@@ -49,6 +49,11 @@ export default function BreakdownReportPage() {
 
   return (
     <div style={{ maxWidth: 420, margin: '0 auto', padding: 16 }}>
+      <div style={{ marginBottom: 10 }}>
+        <button className="btn-secondary" onClick={() => navigate('/maintenance')}>
+          ← بازگشت
+        </button>
+      </div>
       <div style={{ textAlign: 'center', marginBottom: 16 }}>
         <p style={{ fontSize: 18, fontWeight: 600, margin: 0, color: 'var(--color-danger-text)' }}>ثبت خرابی فوری</p>
       </div>
