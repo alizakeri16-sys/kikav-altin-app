@@ -12,7 +12,7 @@ import IssuesSection from '../components/sections/IssuesSection'
 import DelaysSection from '../components/sections/DelaysSection'
 import BreakdownSection from '../components/sections/BreakdownSection'
 import SectionAccordionItem from '../components/SectionAccordionItem'
-import { validateDailyReport } from '../lib/dailyReportValidation'
+import { validateDailyReport, hasAnyValidationError } from '../lib/dailyReportValidation'
 import { saveDailyReport } from '../lib/dailyReportApi'
 
 const SECTION_KEYS = [
@@ -48,7 +48,7 @@ export default function DailyReportFormPage() {
 
   async function handleSubmit() {
     const allErrors = validateDailyReport(report)
-    const hasErrors = Object.values(allErrors).some((arr) => arr && arr.length > 0)
+    const hasErrors = hasAnyValidationError(allErrors)
 
     if (hasErrors) {
       setErrors(allErrors)

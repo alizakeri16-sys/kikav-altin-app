@@ -11,7 +11,6 @@ echo "===================================================="
 # ---------------------------------------------------------------------
 # قدم ۱: دریافت اطلاعات لازم از کاربر
 # ---------------------------------------------------------------------
-read -p "آدرس مخزن گیت‌هاب (مثل https://github.com/username/kikav-altin-app.git): " REPO_URL
 read -s -p "رمز عبور پایگاه داده PostgreSQL (همان کاربر postgres): " DB_PASSWORD
 echo ""
 read -p "آی‌پی این سرور (مثل 91.212.174.229): " SERVER_IP
@@ -19,17 +18,24 @@ read -p "آی‌پی این سرور (مثل 91.212.174.229): " SERVER_IP
 JWT_SECRET=$(openssl rand -hex 32)
 
 # ---------------------------------------------------------------------
-# قدم ۲: دانلود کد از گیت‌هاب
+# قدم ۲: بررسی کد - اگر از قبل موجود است (مثلاً با WinSCP منتقل شده)، دانلود را رد کن
 # ---------------------------------------------------------------------
-echo ""
-echo "---- دانلود کد از گیت‌هاب ----"
 cd /root
-if [ -d "kikav-altin-app" ]; then
-  echo "پوشه قبلاً وجود دارد، حذف و دوباره دانلود می‌شود..."
-  rm -rf kikav-altin-app
+if [ -d "kikav-app/web" ] && [ -d "kikav-app/server" ]; then
+  echo ""
+  echo "کد از قبل در /root/kikav-app موجود است، از دانلود گیت‌هاب صرف‌نظر می‌شود."
+  cd kikav-app
+else
+  echo ""
+  echo "---- دانلود کد از گیت‌هاب ----"
+  read -p "آدرس مخزن گیت‌هاب (مثل https://github.com/username/kikav-altin-app.git): " REPO_URL
+  if [ -d "kikav-altin-app" ]; then
+    echo "پوشه قبلاً وجود دارد، حذف و دوباره دانلود می‌شود..."
+    rm -rf kikav-altin-app
+  fi
+  git clone "$REPO_URL" kikav-altin-app
+  cd kikav-altin-app
 fi
-git clone "$REPO_URL" kikav-altin-app
-cd kikav-altin-app
 
 # ---------------------------------------------------------------------
 # قدم ۳: نصب وابستگی‌های سرور بک‌اند
