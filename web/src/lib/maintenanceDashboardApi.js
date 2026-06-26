@@ -14,32 +14,41 @@ export async function fetchMonthlyMaintenanceData(startIso, endIso) {
   return api.get(`/maintenance-dashboard/monthly?start=${startIso}&end=${endIso}`)
 }
 
-// تجمیع: نرخ تکمیل بازرسی روزانه در طول ماه
-export function buildInspectionCompletionTrend(monthlyData, totalDays) {
+// تاریخچه کامل خرابی یک تجهیز خاص (برای نمایش با کلیک روی هر تجهیز)
+export async function fetchEquipmentHistory(equipmentId, startIso, endIso) {
+  return api.get(`/maintenance-dashboard/equipment-history/${equipmentId}?start=${startIso}&end=${endIso}`)
+}
+
+// تجمیع: نرخ تکمیل بازرسی روزانه در طول ماه - شامل تمام روزهای ماه (حتی روزهای بدون بازرسی = ۰٪)
+export function buildInspectionCompletionTrend(monthlyData, totalDays, startIso) {
   const dailyEquipmentCount = monthlyData.allEquipment.filter((e) => e.inspection_frequency_days === 1).length
   const byDate = {}
   monthlyData.inspections.forEach((insp) => {
     byDate[insp.inspection_date_shamsi] = (byDate[insp.inspection_date_shamsi] || 0) + 1
   })
-  return Object.entries(byDate).map(([date, count]) => ({
-    date,
-    completionRate: dailyEquipmentCount > 0 ? Math.round((count / dailyEquipmentCount) * 100) : 0,
-  }))
+  return Object.entries(byDate)
+    .map(([date, count]) => ({
+      date,
+      completionRate: dailyEquipmentCount > 0 ? Math.round((count / dailyEquipmentCount) * 100) : 0,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date))
 }
 
-// تجمیع: رتبه‌بندی تجهیزات پرمشکل (تعداد موارد خراب)
+// تجمیع: رتبه‌بندی تجهیزات پرمشکل، با لیست دقیق آیتم‌های خراب هر تجهیز
 export function buildEquipmentProblemRanking(monthlyData) {
-  const counts = {}
+  const grouped = {}
   monthlyData.results.forEach((r) => {
     if (r.status === 'خراب') {
       const eqId = r.equipment_id
-      if (eqId) counts[eqId] = (counts[eqId] || 0) + 1
+      if (!eqId) return
+      if (!grouped[eqId]) grouped[eqId] = []
+      grouped[eqId].push({ itemText: r.item_text, date: r.inspection_date_shamsi, note: r.note })
     }
   })
-  return Object.entries(counts)
-    .map(([eqId, count]) => {
+  return Object.entries(grouped)
+    .map(([eqId, items]) => {
       const eq = monthlyData.allEquipment.find((e) => e.id === eqId)
-      return { name: eq?.name || 'نامشخص', count }
+      return { equipmentId: eqId, name: eq?.name || 'نامشخص', count: items.length, items }
     })
     .sort((a, b) => b.count - a.count)
 }

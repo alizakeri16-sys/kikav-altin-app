@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import {
   fetchMonthlyMaintenanceData,
@@ -29,6 +29,7 @@ export default function MonthlyMaintenanceDashboard() {
   const [selectedMonth, setSelectedMonth] = useState(month)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [expandedEquipment, setExpandedEquipment] = useState(null)
 
   useEffect(() => {
     loadMonth()
@@ -85,31 +86,71 @@ export default function MonthlyMaintenanceDashboard() {
         <SummaryCard label="میانگین MTBF" value={kpis.mtbf != null ? toFarsiDigits(kpis.mtbf) : '—'} unit="ساعت" />
       </div>
 
+      {kpis.breakdownCount === 0 && (
+        <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', margin: 0, textAlign: 'center' }}>
+          شاخص‌های MTTR، Availability و MTBF از داده «خرابی فوری» محاسبه می‌شوند. چون این ماه خرابی‌ای ثبت نشده، این مقادیر «—» نشان داده می‌شوند.
+        </p>
+      )}
+
       <div className="card">
         <p className="section-title">نرخ تکمیل بازرسی روزانه در طول ماه</p>
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={completionTrend}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} unit="%" />
-            <Tooltip />
-            <Line type="monotone" dataKey="completionRate" stroke="#1f2a44" strokeWidth={2} />
-          </LineChart>
-        </ResponsiveContainer>
+        {completionTrend.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', textAlign: 'center' }}>
+            در این ماه هنوز هیچ بازرسی‌ای ثبت نشده است.
+          </p>
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={completionTrend}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} unit="%" domain={[0, 100]} />
+              <Tooltip />
+              <Bar dataKey="completionRate" fill="#1f2a44" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {problemRanking.length > 0 && (
         <div className="card">
           <p className="section-title">رتبه‌بندی تجهیزات پرمشکل</p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-tertiary)', margin: '0 0 10px' }}>
+            برای دیدن جزئیات هر مورد، روی نام تجهیز کلیک کنید.
+          </p>
           <ResponsiveContainer width="100%" height={Math.max(160, problemRanking.length * 40)}>
             <BarChart data={problemRanking} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
+              <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={120} />
               <Tooltip />
-              <Bar dataKey="count" fill="#b3261e" />
+              <Bar dataKey="count" fill="#b3261e" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
+
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {problemRanking.map((eq) => (
+              <div key={eq.equipmentId}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ width: '100%', textAlign: 'right', fontSize: 13 }}
+                  onClick={() => setExpandedEquipment(expandedEquipment === eq.equipmentId ? null : eq.equipmentId)}
+                >
+                  {eq.name} — {toFarsiDigits(eq.count)} مورد خراب {expandedEquipment === eq.equipmentId ? '▲' : '▼'}
+                </button>
+                {expandedEquipment === eq.equipmentId && (
+                  <div style={{ padding: '8px 12px', background: 'var(--color-surface-alt)', borderRadius: 8, marginTop: 4 }}>
+                    {eq.items.map((item, idx) => (
+                      <div key={idx} style={{ fontSize: 12, padding: '4px 0', borderBottom: idx < eq.items.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
+                        <span style={{ color: 'var(--color-text-tertiary)' }}>{item.date}</span> — {item.itemText}
+                        {item.note && <span style={{ color: 'var(--color-text-secondary)' }}> ({item.note})</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

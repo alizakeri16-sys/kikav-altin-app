@@ -31,19 +31,26 @@ router.get('/daily', async (req, res) => {
 
     if (inspectionIds.length > 0) {
       const broken = await pool.query(
-        `select ir.*, ici.item_text from inspection_results ir
+        `select ir.*, ici.item_text, ici.category, ici.inspection_method, eq.name as equipment_name
+         from inspection_results ir
          join inspection_checklist_items ici on ici.id = ir.checklist_item_id
+         join inspection_records rec on rec.id = ir.inspection_record_id
+         join equipment eq on eq.id = rec.equipment_id
          where ir.inspection_record_id = any($1) and ir.status = 'خراب'`,
         [inspectionIds]
       )
       brokenItems = broken.rows.map((r) => ({
         id: r.id, note: r.note, photo_url: r.photo_url,
-        inspection_checklist_items: { item_text: r.item_text },
+        equipment_name: r.equipment_name,
+        inspection_checklist_items: { item_text: r.item_text, category: r.category, inspection_method: r.inspection_method },
       }))
 
       const numeric = await pool.query(
-        `select ir.*, ici.item_text, ici.threshold_text, ici.unit from inspection_results ir
+        `select ir.*, ici.item_text, ici.threshold_text, ici.unit, eq.name as equipment_name
+         from inspection_results ir
          join inspection_checklist_items ici on ici.id = ir.checklist_item_id
+         join inspection_records rec on rec.id = ir.inspection_record_id
+         join equipment eq on eq.id = rec.equipment_id
          where ir.inspection_record_id = any($1) and ir.numeric_value is not null`,
         [inspectionIds]
       )
@@ -51,6 +58,7 @@ router.get('/daily', async (req, res) => {
         .filter((r) => isOutOfRange(r.numeric_value, r.threshold_text))
         .map((r) => ({
           id: r.id, numeric_value: r.numeric_value,
+          equipment_name: r.equipment_name,
           inspection_checklist_items: { item_text: r.item_text, threshold_text: r.threshold_text, unit: r.unit },
         }))
     }
@@ -89,8 +97,10 @@ router.get('/monthly', async (req, res) => {
     let results = []
     if (inspectionIds.length > 0) {
       const r = await pool.query(
-        `select ir.*, ici.item_text, ici.equipment_id from inspection_results ir
+        `select ir.*, ici.item_text, ici.equipment_id, rec.inspection_date_shamsi
+         from inspection_results ir
          join inspection_checklist_items ici on ici.id = ir.checklist_item_id
+         join inspection_records rec on rec.id = ir.inspection_record_id
          where ir.inspection_record_id = any($1)`,
         [inspectionIds]
       )
@@ -111,6 +121,35 @@ router.get('/monthly', async (req, res) => {
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'خطا در واکشی داشبورد ماهانه' })
+  }
+})
+
+// تاریخچه کامل موارد خراب یک تجهیز خاص در یک بازه (برای کلیک روی هر تجهیز در رتبه‌بندی)
+router.get('/equipment-history/:equipmentId', async (req, res) => {
+  const { equipmentId } = req.params
+  const { start, end } = req.query
+  try {
+    const results = await pool.query(
+      `select ir.*, ici.item_text, ici.category, rec.inspection_date_shamsi
+       from inspection_results ir
+       join inspection_checklist_items ici on ici.id = ir.checklist_item_id
+       join inspection_records rec on rec.id = ir.inspection_record_id
+       where rec.equipment_id = $1 and rec.inspection_date >= $2 and rec.inspection_date <= $3
+         and ir.status = 'خراب'
+       order by rec.inspection_date desc`,
+      [equipmentId, start, end]
+    )
+
+    const breakdowns = await pool.query(
+      `select * from breakdown_records where equipment_id = $1 and failure_datetime >= $2 and failure_datetime <= $3
+       order by failure_datetime desc`,
+      [equipmentId, start, end]
+    )
+
+    res.json({ inspectionIssues: results.rows, breakdowns: breakdowns.rows })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'خطا در واکشی تاریخچه تجهیز' })
   }
 })
 
