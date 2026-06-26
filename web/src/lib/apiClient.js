@@ -29,6 +29,7 @@ async function apiRequest(path, options = {}) {
 export const api = {
   get: (path) => apiRequest(path, { method: 'GET' }),
   post: (path, body) => apiRequest(path, { method: 'POST', body: JSON.stringify(body) }),
+  put: (path, body) => apiRequest(path, { method: 'PUT', body: JSON.stringify(body) }),
 }
 
 export async function uploadPhoto(file) {

@@ -41,6 +41,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/daily-report/edit/:reportId"
+        element={
+          <ProtectedRoute>
+            <DailyReportFormPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/dashboard"
         element={
           <ProtectedRoute requireAdmin>

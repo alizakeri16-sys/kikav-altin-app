@@ -112,6 +112,72 @@ router.post('/inspections', async (req, res) => {
   }
 })
 
+// ویرایش یک بازرسی موجود (فقط سرپرست و مدیر)
+router.put('/inspections/:recordId', async (req, res) => {
+  if (req.userRole === 'operator') {
+    return res.status(403).json({ error: 'اپراتور اجازه ویرایش بازرسی ثبت‌شده را ندارد. با سرپرست یا مدیر هماهنگ کنید.' })
+  }
+
+  const { recordId } = req.params
+  const { dateIso, dateShamsi, results } = req.body
+  const client = await pool.connect()
+
+  try {
+    await client.query('BEGIN')
+
+    const existing = await client.query('select id from inspection_records where id = $1', [recordId])
+    if (existing.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'بازرسی مورد نظر یافت نشد' })
+    }
+
+    await client.query(
+      'update inspection_records set inspection_date = $1, inspection_date_shamsi = $2 where id = $3',
+      [dateIso, dateShamsi, recordId]
+    )
+
+    await client.query('delete from inspection_results where inspection_record_id = $1', [recordId])
+
+    for (const r of results) {
+      await client.query(
+        `insert into inspection_results (inspection_record_id, checklist_item_id, status, numeric_value, note, photo_url)
+         values ($1, $2, $3, $4, $5, $6)`,
+        [recordId, r.checklistItemId, r.status, r.numericValue || null, r.note || null, r.photoUrl || null]
+      )
+    }
+
+    await client.query('COMMIT')
+    res.json({ success: true, recordId })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    console.error(err)
+    res.status(500).json({ error: 'ویرایش بازرسی با خطا مواجه شد' })
+  } finally {
+    client.release()
+  }
+})
+
+// واکشی یک بازرسی موجود به همراه نتایج آن (برای صفحه ویرایش)
+router.get('/inspections/:recordId', async (req, res) => {
+  try {
+    const record = await pool.query('select * from inspection_records where id = $1', [req.params.recordId])
+    if (record.rows.length === 0) return res.status(404).json({ error: 'بازرسی یافت نشد' })
+
+    const results = await pool.query(
+      `select ir.*, ici.item_text, ici.category, ici.field_type, ici.unit, ici.threshold_text, ici.inspection_method
+       from inspection_results ir
+       join inspection_checklist_items ici on ici.id = ir.checklist_item_id
+       where ir.inspection_record_id = $1`,
+      [req.params.recordId]
+    )
+
+    res.json({ record: record.rows[0], results: results.rows })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'خطا در واکشی بازرسی' })
+  }
+})
+
 // ثبت خرابی فوری
 router.post('/breakdown', async (req, res) => {
   const { equipmentId, cause, correctiveAction, sparePartsUsed, photoUrl } = req.body

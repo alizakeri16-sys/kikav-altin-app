@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { fetchDailyReportDetail } from '../../lib/dashboardApi'
 import SummaryCard from './SummaryCard'
 import ShamsiDatePicker from '../ShamsiDatePicker'
 import { toFarsiDigits } from '../../lib/jalaliDate'
 
 export default function DailyDashboardView({ selectedDate, onChangeDate }) {
+  const navigate = useNavigate()
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -47,23 +49,34 @@ export default function DailyDashboardView({ selectedDate, onChangeDate }) {
               {detail.report.inactivity_note}
             </p>
           )}
+          <button
+            className="btn-secondary"
+            style={{ marginTop: 12 }}
+            onClick={() => navigate(`/daily-report/edit/${detail.report.id}`)}
+          >
+            ویرایش این گزارش
+          </button>
         </div>
       )}
 
       {!loading && detail && detail.isMineActive === true && (
-        <DailyDetailContent detail={detail} />
+        <DailyDetailContent detail={detail} onEdit={() => navigate(`/daily-report/edit/${detail.report.id}`)} />
       )}
     </div>
   )
 }
 
-function DailyDetailContent({ detail }) {
+function DailyDetailContent({ detail, onEdit }) {
   const totalTonnage = detail.shifts.reduce((sum, s) => sum + (Number(s.input_tonnage) || 0), 0)
   const totalRuns = detail.shifts.reduce((sum, s) => sum + (Number(s.run_count) || 0), 0)
   const presentCount = detail.personnel.filter((p) => p.is_present).length
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <button className="btn-secondary" style={{ alignSelf: 'flex-start' }} onClick={onEdit}>
+        ویرایش این گزارش
+      </button>
+
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <SummaryCard label="تناژ کل ورودی" value={toFarsiDigits(totalTonnage)} unit="تن" />
         <SummaryCard label="تعداد کل ران" value={toFarsiDigits(totalRuns)} />
