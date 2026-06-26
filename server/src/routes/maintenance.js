@@ -180,12 +180,12 @@ router.get('/inspections/:recordId', async (req, res) => {
 
 // ثبت خرابی فوری
 router.post('/breakdown', async (req, res) => {
-  const { equipmentId, cause, correctiveAction, sparePartsUsed, photoUrl } = req.body
+  const { equipmentId, cause, correctiveAction, sparePartsUsed, photoUrl, failureDatetime } = req.body
   try {
     await pool.query(
       `insert into breakdown_records (equipment_id, reported_by, breakdown_type, failure_datetime, cause, corrective_action, spare_parts_used, photo_url, status)
-       values ($1, $2, 'اتفاقی', now(), $3, $4, $5, $6, 'باز')`,
-      [equipmentId, req.userId, cause, correctiveAction || null, sparePartsUsed || null, photoUrl || null]
+       values ($1, $2, 'اتفاقی', $3, $4, $5, $6, $7, 'باز')`,
+      [equipmentId, req.userId, failureDatetime || new Date().toISOString(), cause, correctiveAction || null, sparePartsUsed || null, photoUrl || null]
     )
     res.json({ success: true })
   } catch (err) {

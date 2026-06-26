@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/apiClient'
 import OptionalPhotoUpload from '../components/OptionalPhotoUpload'
+import ShamsiDatePicker from '../components/ShamsiDatePicker'
+import { todayShamsiString, shamsiStringToIsoDate } from '../lib/jalaliDate'
 
 export default function BreakdownReportPage() {
   const navigate = useNavigate()
   const [equipmentList, setEquipmentList] = useState([])
   const [form, setForm] = useState({
     equipmentId: '',
+    failureDateShamsi: todayShamsiString(),
+    failureTime: '',
     cause: '',
     correctiveAction: '',
     sparePartsUsed: '',
@@ -29,14 +33,16 @@ export default function BreakdownReportPage() {
   }
 
   async function handleSubmit() {
-    if (!form.equipmentId || !form.cause) {
-      setMessage('لطفاً تجهیز و علت خرابی را وارد کنید')
+    if (!form.equipmentId || !form.cause || !form.failureDateShamsi) {
+      setMessage('لطفاً تجهیز، تاریخ، و علت خرابی را وارد کنید')
       return
     }
 
     setSaving(true)
     try {
-      await api.post('/maintenance/breakdown', form)
+      const isoDate = shamsiStringToIsoDate(form.failureDateShamsi)
+      const failureDatetime = form.failureTime ? `${isoDate}T${form.failureTime}:00` : `${isoDate}T00:00:00`
+      await api.post('/maintenance/breakdown', { ...form, failureDatetime })
       setMessage('خرابی با موفقیت ثبت شد')
       setTimeout(() => navigate('/maintenance'), 1000)
     } catch (err) {
@@ -59,6 +65,19 @@ export default function BreakdownReportPage() {
       </div>
 
       <div className="card">
+        <div style={{ marginBottom: 12 }}>
+          <ShamsiDatePicker
+            label="تاریخ وقوع خرابی"
+            value={form.failureDateShamsi}
+            onChange={(v) => update('failureDateShamsi', v)}
+          />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <span className="label">ساعت تقریبی وقوع (اختیاری)</span>
+          <input type="time" value={form.failureTime} onChange={(e) => update('failureTime', e.target.value)} />
+        </div>
+
         <div style={{ marginBottom: 12 }}>
           <span className="label label-required">تجهیز</span>
           <select value={form.equipmentId} onChange={(e) => update('equipmentId', e.target.value)}>
