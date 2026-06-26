@@ -11,7 +11,8 @@ import {
   buildPersonnelAttendance,
   buildMonthlySummary,
 } from '../../lib/dashboardApi'
-import { toFarsiDigits, todayShamsiString, shamsiStringToIsoDate } from '../../lib/jalaliDate'
+import { fetchMissingDays } from '../../lib/dailyReportApi'
+import { toFarsiDigits, todayShamsiString, shamsiStringToIsoDate, gregorianDateToShamsiString } from '../../lib/jalaliDate'
 import { exportDailyReportsToExcel } from '../../lib/excelExport'
 import SummaryCard from './SummaryCard'
 
@@ -45,6 +46,7 @@ export default function MonthlyDashboardView() {
   const [monthlyData, setMonthlyData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
+  const [missingDays, setMissingDays] = useState([])
 
   useEffect(() => {
     loadMonth()
@@ -62,6 +64,15 @@ export default function MonthlyDashboardView() {
 
     const data = await fetchMonthlyReports(startIso, endIso)
     setMonthlyData(data)
+
+    try {
+      const missing = await fetchMissingDays(startIso, endIso)
+      setMissingDays(missing)
+    } catch (err) {
+      console.error(err)
+      setMissingDays([])
+    }
+
     setLoading(false)
   }
 
@@ -120,6 +131,24 @@ export default function MonthlyDashboardView() {
           </div>
         </div>
       </div>
+
+      {missingDays.length > 0 && (
+        <div className="card" style={{ background: 'var(--color-danger-bg)' }}>
+          <p className="section-title" style={{ fontSize: 14, color: 'var(--color-danger-text)' }}>
+            ⚠ روزهای بدون هیچ گزارش ({toFarsiDigits(missingDays.length)} روز)
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 8px' }}>
+            برای این روزها نه گزارش فعال و نه گزارش تعطیلی ثبت نشده است.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {missingDays.map((day) => (
+              <span key={day} className="badge badge-danger">
+                {gregorianDateToShamsiString(new Date(day))}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card" style={{ display: 'flex', gap: 8 }}>
         <button className="btn-secondary" style={{ flex: 1 }} disabled={exporting} onClick={handleExportCurrentMonth}>

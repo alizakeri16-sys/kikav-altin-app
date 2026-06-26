@@ -15,6 +15,17 @@ export async function checkReportExists(reportDateShamsi) {
   return result.exists
 }
 
+// بررسی اینکه آیا گزارش امروز (میلادی) ثبت شده یا نه - برای صفحه اصلی
+export async function fetchTodayReportStatus() {
+  return api.get('/daily-reports/today-status')
+}
+
+// لیست روزهایی که در یک بازه هیچ گزارشی ثبت نشده (برای هشدار در داشبورد)
+export async function fetchMissingDays(startIso, endIso) {
+  const result = await api.get(`/daily-reports/missing-days?start=${startIso}&end=${endIso}`)
+  return result.missingDays
+}
+
 // واکشی یک گزارش با شناسه (برای صفحه ویرایش)
 export async function fetchDailyReportById(reportId) {
   return api.get(`/daily-reports/${reportId}`)

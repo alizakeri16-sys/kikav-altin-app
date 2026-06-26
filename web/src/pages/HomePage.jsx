@@ -1,9 +1,18 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
+import { fetchTodayReportStatus } from '../lib/dailyReportApi'
 
 export default function HomePage() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const [todayStatus, setTodayStatus] = useState(null)
+
+  useEffect(() => {
+    fetchTodayReportStatus()
+      .then((data) => setTodayStatus(data.isSubmitted))
+      .catch(() => setTodayStatus(null))
+  }, [])
 
   function handleLogout() {
     logout()
@@ -16,6 +25,21 @@ export default function HomePage() {
         <p style={{ fontSize: 13, color: 'var(--color-text-tertiary)', margin: 0 }}>شرکت کی‌کاو آلتین</p>
         <p style={{ fontSize: 18, fontWeight: 600, margin: '4px 0 0' }}>خوش آمدید، {user?.full_name}</p>
       </div>
+
+      {todayStatus !== null && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 16,
+            textAlign: 'center',
+            background: todayStatus ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+          }}
+        >
+          <p style={{ fontSize: 14, fontWeight: 600, margin: 0, color: todayStatus ? 'var(--color-success-text)' : 'var(--color-danger-text)' }}>
+            {todayStatus ? '✓ گزارش امروز ثبت شده است' : '✗ گزارش امروز هنوز ثبت نشده است'}
+          </p>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <button className="card" style={{ width: '100%', padding: 18, textAlign: 'center' }} onClick={() => navigate('/daily-report')}>

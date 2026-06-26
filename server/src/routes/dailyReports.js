@@ -5,6 +5,46 @@ import { requireAuth } from '../middleware/auth.js'
 const router = express.Router()
 router.use(requireAuth)
 
+// وضعیت گزارش امروز (برای نمایش در صفحه اصلی)
+router.get('/today-status', async (req, res) => {
+  try {
+    const todayIso = new Date().toISOString().slice(0, 10)
+    const result = await pool.query('select id from daily_reports where report_date = $1', [todayIso])
+    res.json({ isSubmitted: result.rows.length > 0 })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'خطا در بررسی وضعیت امروز' })
+  }
+})
+
+// لیست روزهای بدون هیچ گزارش در یک بازه (برای هشدار در داشبورد)
+router.get('/missing-days', async (req, res) => {
+  const { start, end } = req.query
+  try {
+    const result = await pool.query(
+      `select generate_series($1::date, $2::date, '1 day'::interval)::date as day`,
+      [start, end]
+    )
+    const allDays = result.rows.map((r) => r.day.toISOString().slice(0, 10))
+
+    const reports = await pool.query(
+      'select report_date from daily_reports where report_date >= $1 and report_date <= $2',
+      [start, end]
+    )
+    const reportedDays = new Set(reports.rows.map((r) => r.report_date.toISOString().slice(0, 10)))
+
+    // فقط روزهایی که از امروز قبل‌تر بوده‌اند را به‌عنوان «از قلم‌افتاده» در نظر می‌گیریم
+    // (روزهای آینده طبیعی است که هنوز گزارش نداشته باشند)
+    const todayIso = new Date().toISOString().slice(0, 10)
+    const missingDays = allDays.filter((day) => day < todayIso && !reportedDays.has(day))
+
+    res.json({ missingDays })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'خطا در محاسبه روزهای بدون گزارش' })
+  }
+})
+
 // ذخیره یک گزارش روزانه کامل
 router.post('/', async (req, res) => {
   const report = req.body
