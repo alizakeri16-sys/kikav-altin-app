@@ -9,6 +9,7 @@ import {
   buildMaintenanceKPIs,
 } from '../../lib/maintenanceDashboardApi'
 import { toFarsiDigits, todayShamsiString, shamsiStringToIsoDate } from '../../lib/jalaliDate'
+import { exportMaintenanceToExcel } from '../../lib/excelExport'
 import SummaryCard from '../dashboard/SummaryCard'
 
 const MONTH_NAMES = [
@@ -30,6 +31,7 @@ export default function MonthlyMaintenanceDashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [expandedEquipment, setExpandedEquipment] = useState(null)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     loadMonth()
@@ -46,6 +48,25 @@ export default function MonthlyMaintenanceDashboard() {
     const result = await fetchMonthlyMaintenanceData(startIso, endIso)
     setData(result)
     setLoading(false)
+  }
+
+  async function handleExportCurrentMonth() {
+    setExporting(true)
+    try {
+      await exportMaintenanceToExcel(data, `تعمیر-نگهداشت-${selectedYear}-${selectedMonth}.xlsx`)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function handleExportAllHistory() {
+    setExporting(true)
+    try {
+      const allData = await fetchMonthlyMaintenanceData('2020-01-01', '2035-12-31')
+      await exportMaintenanceToExcel(allData, 'تعمیر-نگهداشت-کامل-تاریخچه.xlsx')
+    } finally {
+      setExporting(false)
+    }
   }
 
   if (loading || !data) {
@@ -77,6 +98,15 @@ export default function MonthlyMaintenanceDashboard() {
             </select>
           </div>
         </div>
+      </div>
+
+      <div className="card" style={{ display: 'flex', gap: 8 }}>
+        <button className="btn-secondary" style={{ flex: 1 }} disabled={exporting} onClick={handleExportCurrentMonth}>
+          {exporting ? 'در حال آماده‌سازی...' : 'خروجی اکسل این ماه'}
+        </button>
+        <button className="btn-secondary" style={{ flex: 1 }} disabled={exporting} onClick={handleExportAllHistory}>
+          {exporting ? 'در حال آماده‌سازی...' : 'خروجی اکسل کل تاریخچه'}
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

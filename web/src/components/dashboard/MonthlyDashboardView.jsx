@@ -12,6 +12,7 @@ import {
   buildMonthlySummary,
 } from '../../lib/dashboardApi'
 import { toFarsiDigits, todayShamsiString, shamsiStringToIsoDate } from '../../lib/jalaliDate'
+import { exportDailyReportsToExcel } from '../../lib/excelExport'
 import SummaryCard from './SummaryCard'
 
 // رنگ‌های مشخص برای هرکدام از ۷ دلیل تعطیلی، تا در نمودار همیشه یکدست باشند
@@ -43,6 +44,7 @@ export default function MonthlyDashboardView() {
   const [selectedMonth, setSelectedMonth] = useState(month)
   const [monthlyData, setMonthlyData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     loadMonth()
@@ -61,6 +63,26 @@ export default function MonthlyDashboardView() {
     const data = await fetchMonthlyReports(startIso, endIso)
     setMonthlyData(data)
     setLoading(false)
+  }
+
+  async function handleExportCurrentMonth() {
+    setExporting(true)
+    try {
+      await exportDailyReportsToExcel(monthlyData, `گزارش-روزانه-${selectedYear}-${selectedMonth}.xlsx`)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function handleExportAllHistory() {
+    setExporting(true)
+    try {
+      // یک بازه بسیار وسیع که عملاً کل تاریخچه ثبت‌شده را شامل می‌شود
+      const allData = await fetchMonthlyReports('2020-01-01', '2035-12-31')
+      await exportDailyReportsToExcel(allData, 'گزارش-روزانه-کامل-تاریخچه.xlsx')
+    } finally {
+      setExporting(false)
+    }
   }
 
   if (loading || !monthlyData) {
@@ -97,6 +119,15 @@ export default function MonthlyDashboardView() {
             </select>
           </div>
         </div>
+      </div>
+
+      <div className="card" style={{ display: 'flex', gap: 8 }}>
+        <button className="btn-secondary" style={{ flex: 1 }} disabled={exporting} onClick={handleExportCurrentMonth}>
+          {exporting ? 'در حال آماده‌سازی...' : 'خروجی اکسل این ماه'}
+        </button>
+        <button className="btn-secondary" style={{ flex: 1 }} disabled={exporting} onClick={handleExportAllHistory}>
+          {exporting ? 'در حال آماده‌سازی...' : 'خروجی اکسل کل تاریخچه'}
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
