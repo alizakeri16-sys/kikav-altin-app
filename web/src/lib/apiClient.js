@@ -1,7 +1,10 @@
 // این فایل جایگزین supabaseClient.js شده است.
 // به‌جای صحبت مستقیم با Supabase، حالا با سرور بک‌اند خودمان (روی همان سرور) صحبت می‌کنیم.
+// از یک مسیر نسبی استفاده می‌کنیم (نه آی‌پی ثابت) تا چه از طریق آی‌پی، چه از طریق دامنه
+// به سایت وصل شویم، درخواست‌ها همیشه به همان آدرسی بروند که کاربر در مرورگرش باز کرده است.
+// (Nginx مسیر /api را به سرور بک‌اند روی پورت ۴۰۰۰ هدایت می‌کند)
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
 
 function getToken() {
   const stored = sessionStorage.getItem('kikav_user')
@@ -45,7 +48,8 @@ export async function uploadPhoto(file) {
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'بارگذاری عکس ناموفق بود')
 
-  // آدرس کامل عکس (چون مسیر نسبی از سرور برمی‌گردد)
+  // آدرس عکس به‌صورت نسبی برمی‌گردد (مثلاً /uploads/xxx.jpg) و مرورگر
+  // خودکار آن را به همان دامنه/آی‌پی فعلی صفحه می‌چسباند - نیازی به ساخت آدرس کامل نیست
   const serverOrigin = API_BASE.replace('/api', '')
   return `${serverOrigin}${data.photoUrl}`
 }
